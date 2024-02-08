@@ -1,0 +1,500 @@
+﻿FUNCTION_BLOCK "Depal.Lifter"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+	  IN_FistCycle : Bool;   // Lifter position backup
+	  IN_ManualCycle_ON : Bool;   // FUNCTION BLOCK INPUT: Lifter chain running 
+	  IN_AutomaticCycle_ON : Bool;   // FUNCTION BLOCK INPUT: Manual cycle ON
+	  IN_AutomaticStartConditionsOk : Bool;   // FUNCTION BLOCK INPUT: Walls open 
+	  IN_LifterChain_Running : Bool;   // FUNCTION BLOCK INPUT: Automatic start condition ok
+	  IN_FromTranslator_UpEnable : Bool;   // FUNCTION BLOCK INPUT: Automatic cycle ON
+	  IN_FromTranslator_DownEnable : Bool;   // FUNCTION BLOCK INPUT: from Translator "layer removed"
+	  IN_FromTranslator_FlapRemoved : Bool;   // FUNCTION BLOCK INPUT: from Translator "down enable"
+	  IN_FromTranslator_LayerRemoved : Bool;   // FUNCTION BLOCK INPUT: from Translator "frame removed"
+	  IN_FromTranslator_FrameRemoved : Bool;   // FUNCTION BLOCK INPUT: from Translator "up enable"
+	  IN_Lifter_Low : Bool;   // FUNCTION BLOCK INPUT: Pallet blocks high 
+	  IN_CansPresence : Bool;   // FUNCTION BLOCK INPUT: Lifter low position sensor
+	  IN_PalletPresence : Bool;   // Lifter chain run backward
+	  IN_PalletBlocks_High : Bool;   // FUNCTION BLOCK INPUT: Pallet presence
+	  IN_PalletBlocks_Low : Bool;   // FUNCTION BLOCK INPUT: Cans presence
+	  IN_Walls_LargeSize : Bool;   // FUNCTION BLOCK INPUT: Walls "large" close
+	  IN_Walls_Open : Bool;   // FUNCTION BLOCK INPUT: Wall large size
+	  IN_Walls_CloseSmall : Bool;   // FUNCTION BLOCK INPUT: Pallet blocks low
+	  IN_Walls_CloseLarge : Bool;   // FUNCTION BLOCK INPUT: Walls "small" close
+	  IN_FlapClamps_Fwd : Bool;   // FUNCTION BLOCK OUTPUT: Alarm automatic condition 
+	  IN_FlapClamps_Bwd : Bool;   // FUNCTION BLOCK INPUT: Manual down request 
+	  IN_ExternalHomingRequest : Bool;   // FUNCTION BLOCK INPUT: Motor running
+	  IN_MotorRunning : Bool;   // FUNCTION BLOCK INPUT: Lifter position 
+	  IN_PalletTransfer_Fwd : Bool;   // FUNCTION BLOCK INPUT: Pallet transfer backward
+	  IN_PalletTransfer_Bwd : Bool;   // FUNCTION BLOCK INPUT: External homing request 
+	  IN_Lifter_Position : UInt;   // FUNCTION BLOCK INPUT: Flap clamps backward
+	  IN_ManualUpRequest : Bool;   // FUNCTION BLOCK INPUT: Frame clamps low position
+	  IN_ManualDownRequest : Bool;   // FUNCTION BLOCK INPUT: Manual up request 
+	  IN_DischargePalletRequest : Bool;   // FUNCTION BLOCK INPUT: Configuration 
+	  IN_Configuration : "tDEPAL.Configuration";   // Lifter down position 
+	  IN_WorkingParameter : "tDEPAL.Parameters";   // FUNCTION BLOCK INPUT: Auxiliary circuit 
+	  Aux { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "tDEPAL.AuxiliaryCircuit";   // FUNCTION BLOCK INPUT: Pallet transfer forward
+   END_VAR
+
+   VAR_OUTPUT 
+	  OUT_CASE_Lift : Int;   // FUNCTION BLOCK OUTPUT: Case stop
+	  OUT_CASE_Stop : Int;   // FUNCTION BLOCK INPUT: Working parameter 
+	  OUT_LifterChain_Run : Bool;   // FUNCTION BLOCK OUTPUT: Lifter cycle end
+	  OUT_LiftCycle_End : Bool;   // FUNCTION BLOCK OUTPUT: Walls "small" close
+	  OUT_PosReached : Bool;   // FUNCTION BLOCK OUTPUT: Pallet block up command 
+	  OUT_PalletBlock_UpCmd : Bool;   // FUNCTION BLOCK OUTPUT: Lifter chain run 
+	  OUT_PalletBlock_DownCmd : Bool;   // FUNCTION BLOCK OUTPUT: Walls open 
+	  OUT_Walls_Open : Bool;   // FUNCTION BLOCK INPUT: Discharge pallet request 
+	  OUT_Walls_CloseSmall : Bool;   // FUNCTION BLOCK OUTPUT: Walls "large" close
+	  OUT_Walls_CloseLarge : Bool;   // FUNCTION BLOCK OUTPUT: Pallet block down command 
+	  OUT_Flap_Clamps_ON : Bool;   // FUNCTION BLOCK OUTPUT: Lifter manual run up
+	  OUT_Flap_Clamps_OFF : Bool;   // FUNCTION BLOCK OUTPUT: Flap clamps ON
+	  OUT_Lifter_AUT_RunUp : Bool;   // Pallet block down command 
+	  OUT_Lifter_AUT_RunDown : Bool;   // FUNCTION BLOCK OUTPUT: Lifter automatic run up
+	  OUT_Lifter_MAN_RunUp : Bool;   // FUNCTION BLOCK OUTPUT: Lifter automatic run down
+	  OUT_Lifter_MAN_RunDown : Bool;   // Homing alarm timer
+	  OUT_ManualCondition_Alarm : Bool;   // Flap clamps ON
+	  OUT_AutomaticCondition_Alarm : Bool;   // FUNCTION BLOCK OUTPUT: Alarm manual condition 
+	  OUT_HomingCycleActive : Bool;   // Lifter run up
+	  OUT_HomingAlarm : Bool;   // FUNCTION BLOCK OUTPUT: Homing cycle active
+	  OUT_ManualAlarmNumber : USInt;   // FUNCTION BLOCK OUTPUT: Homing alarm
+	  OUT_AutomaticAlarmNumber : USInt;   // Case stop 
+   END_VAR
+
+   VAR RETAIN
+	  Aux_LifterToTranslator_RemoveProductAutho : Bool;   // FUNCTION BLOCK OUTPUT: Automatic alarm number
+	  Aux_Automatic_CASE_Lift : Int;   // Lifter to Translator "remove production authorization"
+   END_VAR
+   VAR 
+	  Aux_Manual_DownCmd : Bool;   // FUNCTION BLOCK OUTPUT: Position reached
+	  Aux_Manual_UpCmd : Bool;   // Manual down command 
+   END_VAR
+   VAR RETAIN
+	  Aux_CASE_Stop : Int;   // Manual up command 
+	  Aux_LifterChain_FwdCmd : Bool;   // Walls "small" close
+	  Aux_PalletBlock_UpCmd : Bool;   // Lifter chain run forward
+	  Aux_PalletBlock_DownCmd : Bool;   // Pallet block up command 
+	  Aux_Walls_Open : Bool;   // Automatic case lift
+	  Aux_Walls_CloseLarge : Bool;   // Walls open 
+	  Aux_Walls_CloseSmall : Bool;   // Walls "large" close
+	  Aux_FlapClamps_Off : Bool;   // FUNCTION BLOCK OUTPUT: Lifter manual run down 
+	  Aux_FlapClamps_On : Bool;   // FUNCTION BLOCK OUTPUT: Manual alarm number
+	  Aux_Lifter_UpCmd : Bool;   // FUNCTION BLOCK OUTPUT: Flap clamps OFF
+	  Aux_Lifter_DownCmd : Bool;   // FUNCTION BLOCK OUTPUT: Automatic case lift
+	  Aux_Lifter_DownPos : Bool;   // Lifter run down 
+	  Aux_Lifter_PosBackup : Real;   // Lifter cycle end
+	  Aux_CansPresenceInhibition : Bool;   // Position reached
+	  Aux_PosReached : Bool;   // FUNCTION BLOCK INPUT: First cycle 
+	  Aux_LiftCycle_End : Bool;   // Homing required
+	  Aux_LayerCount : USInt;   // Homing active
+	  Aux_Homing_Active : Bool;   // FUNCTION BLOCK INPUT: Flap clamps forward
+	  Aux_Homing_Required : Bool;   // Homing alarm
+	  Aux_Homing_Alarm : Bool;   // Layer count 
+	  Aux_LastLayer : Bool;   // Pallet empty
+	  Aux_PalletEmpty : Bool;   // Discharge pallet request 
+	  Aux_LifterChain_RunBwd : Bool;   // Layer removed
+	  Aux_LayerRemoved : Bool;   // Last layer
+	  Aux_DischargePalletRequest : Bool;   // Flap clamps OFF
+	  Aux_HomingAlarmTimer {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;   // Lifter stop timer
+	  Aux_LifterStop {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;   // Cans presence inhibition 
+   END_VAR
+
+
+BEGIN
+	//**************** DEPAL: Lift Pallet sequence ********************
+	//Title: Depal.Lifter
+	//Author: MNicolosi
+	//Date: 30/11/2021
+	//Rev: 0.1 
+	//Note: Rev	 Data			Description
+	//	  0.1	 30/11/2021	  First release
+	//*****************************************************************
+	
+	//LOW POSITION
+	#Aux_Lifter_DownPos := #IN_Lifter_Position = 0 OR #IN_Lifter_Low;
+	
+	REGION HOMING  
+		IF (#IN_ExternalHomingRequest AND NOT #IN_AutomaticCycle_ON) (*OR #IN_FistCycle*)OR #Aux_Manual_DownCmd OR #Aux_Manual_UpCmd THEN
+			#Aux_Homing_Required := TRUE;
+		END_IF;
+		
+		IF #Aux_Homing_Required THEN
+			IF (#IN_ExternalHomingRequest OR #Aux.AutomaticCycleStartReq AND NOT #Aux_Homing_Active) OR #Aux_Homing_Active THEN
+				#Aux_FlapClamps_On := FALSE;
+				#Aux_FlapClamps_Off := NOT #IN_FlapClamps_Bwd;
+				#Aux_Walls_CloseLarge := FALSE;
+				#Aux_Walls_CloseSmall := FALSE;
+				#Aux_Walls_Open := NOT #IN_Walls_Open;
+				#Aux_Homing_Active := TRUE;
+				#Aux_Lifter_UpCmd := FALSE;
+				#Aux_LifterToTranslator_RemoveProductAutho := FALSE;
+				#Aux_LayerCount := 0;
+				#Aux_DischargePalletRequest := FALSE;
+				#Aux_Lifter_DownCmd := NOT #IN_Lifter_Low
+				AND #IN_FromTranslator_DownEnable
+				AND (#IN_FlapClamps_Bwd AND NOT #IN_FlapClamps_Fwd OR NOT #IN_Configuration.MachineConf.FlapClamps)
+				AND (#IN_Walls_Open OR NOT #IN_Configuration.MachineConf.PalletWall);
+				#Aux_LifterChain_RunBwd := FALSE;
+				#Aux_LifterChain_FwdCmd := FALSE;
+			END_IF;
+		END_IF;
+		
+		REGION CHECK FOR CYCLE START OR CASE RESTART
+		IF NOT #IN_AutomaticCycle_ON AND NOT #Aux_Homing_Active AND NOT #Aux_Manual_DownCmd AND NOT #Aux_Manual_DownCmd AND #Aux_Automatic_CASE_Lift <> -1 THEN
+			#Aux_CASE_Stop := #Aux_Automatic_CASE_Lift;
+			#Aux_Automatic_CASE_Lift := -1;
+		ELSIF #Aux_Homing_Active OR #Aux_Manual_DownCmd OR #Aux_Manual_DownCmd THEN
+			#Aux_CASE_Stop := 0;
+			#Aux_Automatic_CASE_Lift := 0;
+		END_IF;
+		
+		IF (#Aux_Homing_Active AND #IN_Lifter_Low AND (#IN_FlapClamps_Bwd AND NOT #Aux_FlapClamps_On AND NOT #Aux_FlapClamps_Off OR NOT #IN_Configuration.MachineConf.FlapClamps)
+			AND (#IN_Walls_Open AND NOT #Aux_Walls_CloseLarge AND NOT #Aux_Walls_Open AND NOT #Aux_Walls_CloseSmall OR NOT #IN_Configuration.MachineConf.PalletWall)
+			AND #Aux_Automatic_CASE_Lift = 0)
+			AND NOT #Aux_LifterChain_RunBwd
+			AND NOT #Aux_LifterChain_FwdCmd
+			AND NOT #Aux_LifterToTranslator_RemoveProductAutho
+			OR #Aux_Homing_Alarm THEN
+			#Aux_Homing_Active := FALSE;
+			#Aux_Homing_Required := FALSE;
+			#Aux_Lifter_DownCmd := FALSE;
+		END_IF;
+		
+		IF NOT #Aux.StartConditionOk THEN
+			#Aux_Homing_Active := FALSE;
+			#Aux_Lifter_DownCmd := FALSE;
+		END_IF;
+		
+		#Aux_HomingAlarmTimer(IN := #Aux_Homing_Active AND (NOT #Aux_Lifter_DownCmd OR #Aux_Automatic_CASE_Lift > 0) AND NOT #IN_FistCycle,
+							  PT := T#10s);
+		
+		IF #Aux_HomingAlarmTimer.Q THEN
+			#Aux_Homing_Alarm := TRUE;
+		ELSIF #Aux.Reset THEN
+			#Aux_Homing_Alarm := FALSE;
+		END_IF;
+	  END_REGION
+	END_REGION
+	
+	REGION MANUAL_CYCLE
+		IF #IN_FistCycle THEN
+			#Aux_Manual_UpCmd := FALSE;
+			#Aux_Manual_UpCmd := FALSE;
+		END_IF;
+		
+		//MANUAL CONDITIONS CHECK
+		IF #IN_ManualUpRequest AND #IN_ManualCycle_ON AND NOT #IN_AutomaticCycle_ON THEN
+			IF NOT #IN_FromTranslator_UpEnable THEN
+				#OUT_ManualAlarmNumber := 1;
+			ELSIF #IN_FlapClamps_Fwd AND NOT #IN_FlapClamps_Bwd AND #IN_Configuration.MachineConf.FlapClamps THEN
+				#OUT_ManualAlarmNumber := 3;
+			ELSE
+				#Aux_Manual_UpCmd := TRUE;
+				#OUT_ManualAlarmNumber := 0;
+			END_IF;
+		ELSE
+			#Aux_Manual_UpCmd := FALSE;
+		END_IF;
+		
+		IF #IN_ManualDownRequest AND #IN_ManualCycle_ON AND NOT #IN_AutomaticCycle_ON THEN
+			IF NOT #IN_FromTranslator_DownEnable THEN
+				#OUT_ManualAlarmNumber := 4;
+			ELSIF #IN_FlapClamps_Fwd AND NOT #IN_FlapClamps_Bwd THEN
+				#OUT_ManualAlarmNumber := 3;
+			ELSE
+				#Aux_Manual_DownCmd := TRUE;
+				#OUT_ManualAlarmNumber := 0;
+			END_IF;
+		ELSE
+			#Aux_Manual_DownCmd := FALSE;
+		END_IF;
+		
+		#OUT_ManualCondition_Alarm := #OUT_ManualAlarmNumber > 0;
+		
+		IF #Aux.Reset  OR NOT #IN_ManualCycle_ON OR #IN_AutomaticCycle_ON THEN
+			#OUT_ManualAlarmNumber := 0;
+			#OUT_ManualCondition_Alarm := FALSE;
+		END_IF;
+	END_REGION
+	
+	REGION AUTOMATIC_CYCLE 
+	  (*IF NOT #IN_PalletPresence THEN
+			   #Aux_LayerCount := 0;
+		END_IF;*)   
+			
+		//LAST LAYER
+		IF #IN_DischargePalletRequest THEN
+		   #Aux_DischargePalletRequest := TRUE;
+		END_IF;
+		#Aux_LiftCycle_End := (#IN_Lifter_Position >= #IN_Configuration.Lifter_HighPosition_mm (*- #IN_WorkingParameter.PalletHeight_mm*)- (#IN_WorkingParameter.ProductHeight_mm * 0.9));
+		#Aux_LastLayer := (#IN_WorkingParameter.LayerByLayerActivation AND #IN_WorkingParameter.LayerSetpoint <> 0 AND (#Aux_LayerCount >= #IN_WorkingParameter.LayerSetpoint - 1)) OR #Aux_DischargePalletRequest;
+			
+		//PRODUCT PRESENCE RISE FRONT					  
+		IF #IN_CansPresence AND NOT #Aux_CansPresenceInhibition THEN
+		   #Aux_CansPresenceInhibition := TRUE;
+	  //IF   #Aux_Automatic_CASE_Lift <> 40 AND #Aux_Automatic_CASE_Lift <> 35 AND #Aux_Automatic_CASE_Lift <> 34 THEN
+		   #Aux_Lifter_PosBackup := #IN_Lifter_Position;
+	  //END_IF;
+		  
+		ELSIF NOT #IN_CansPresence AND #Aux_Automatic_CASE_Lift <> 40 AND #Aux_Automatic_CASE_Lift <> 35 AND #Aux_Automatic_CASE_Lift <> 34  THEN
+				  #Aux_CansPresenceInhibition := FALSE;
+		END_IF;
+			
+		CASE #Aux_Automatic_CASE_Lift OF
+					
+		"kLIFTER_-1_STANDBY_WAITING_FOR_CYCLE_RECOVERY": //STEP -1: Standby waiting for cycle recovery
+		 IF #IN_AutomaticCycle_ON THEN
+			#Aux_Automatic_CASE_Lift := #Aux_CASE_Stop;
+		 END_IF;
+					
+		"kLIFTER_0_WAITING_START_CONDITIONS": //STEP 0: Lifter - Waiting start conditions  
+		 IF #IN_AutomaticCycle_ON AND #IN_AutomaticStartConditionsOk THEN
+			 #Aux_Automatic_CASE_Lift := 1;
+		 END_IF;
+					
+		"kLIFTER_1_WAITING_PALLET_IN_POSITION": // STEP 1: Lifter - Waiting pallet in position  
+			#Aux_PalletBlock_UpCmd := #IN_Configuration.MachineConf.PalletBlock AND NOT #IN_PalletTransfer_Fwd;
+		 #Aux_PalletBlock_DownCmd := #IN_PalletTransfer_Fwd;
+		 #Aux_Walls_Open := TRUE;
+		 #Aux_Walls_CloseLarge := FALSE;
+		 #Aux_Walls_CloseSmall := FALSE;
+		 #Aux_FlapClamps_On := FALSE;
+		 #Aux_FlapClamps_Off := TRUE;
+		 IF #Aux_Lifter_DownPos
+			 AND (#IN_PalletBlocks_High OR NOT #IN_Configuration.MachineConf.PalletBlock OR #IN_PalletTransfer_Fwd)
+			 AND (#IN_Walls_Open OR NOT #IN_Configuration.MachineConf.PalletWall) THEN
+			 #Aux_LifterChain_FwdCmd := #IN_Configuration.MachineConf.OutfeedPalletConveyor_Presence AND NOT #IN_PalletTransfer_Bwd;
+			 #Aux_LifterChain_RunBwd := #IN_Configuration.MachineConf.OutfeedPalletConveyor_Presence AND #IN_PalletTransfer_Bwd;
+			 IF NOT #IN_PalletTransfer_Fwd AND NOT #IN_PalletTransfer_Bwd OR NOT #IN_Configuration.MachineConf.OutfeedPalletConveyor_Presence AND NOT #Aux_LifterChain_RunBwd AND #Aux_LifterChain_FwdCmd AND (#IN_PalletBlocks_High OR NOT #IN_Configuration.MachineConf.PalletBlock) THEN
+				#Aux_Automatic_CASE_Lift := 10;
+		 END_IF;
+	  END_IF;
+					
+		 "kLIFTER_10_PALLET_IN_POSITION": // STEP 10: Lifter - Pallet in position
+			 IF (NOT #IN_LifterChain_Running OR NOT #IN_Configuration.MachineConf.OutfeedPalletConveyor_Presence) AND #IN_PalletPresence THEN
+				  #Aux_LifterChain_FwdCmd := FALSE;
+				  #Aux_LifterChain_RunBwd := FALSE;
+				  #Aux_Automatic_CASE_Lift := 20;
+		  END_IF;
+					
+		 "kLIFTER_20_PALLET_PREPARATION_FOR_LIFTING": // STEP 20: Lifter - Pallet preparation for lifting
+			 IF #IN_WorkingParameter.Walls_Enable THEN
+				 IF #IN_Walls_LargeSize THEN
+					 #Aux_Walls_CloseLarge := #IN_Configuration.MachineConf.PalletWall;
+					 #Aux_Walls_Open := FALSE;
+					 #Aux_Walls_CloseSmall := FALSE;
+				 ELSE
+					 #Aux_Walls_CloseSmall := #IN_Configuration.MachineConf.PalletWall;
+					 #Aux_Walls_Open := FALSE;
+					 #Aux_Walls_CloseLarge := FALSE;
+				 END_IF;
+			 ELSE
+				 #Aux_Walls_CloseLarge := FALSE;
+				 #Aux_Walls_Open := NOT #IN_Walls_Open;
+				 #Aux_Walls_CloseSmall := FALSE;
+			 END_IF;
+					
+			 IF (#IN_WorkingParameter.Walls_Enable AND ((#IN_Walls_LargeSize AND #IN_Walls_CloseLarge) OR (NOT #IN_Walls_LargeSize AND #IN_Walls_CloseSmall))) OR NOT #IN_Configuration.MachineConf.PalletWall OR (NOT #IN_WorkingParameter.Walls_Enable AND #IN_Walls_Open) THEN
+			  #Aux_Automatic_CASE_Lift := 30;
+		  END_IF;
+				
+		 "kLIFTER_30_PALLET_RISE": // STEP 30: Lifter - Pallet rise
+		  #Aux_FlapClamps_On := FALSE;
+		  #Aux_FlapClamps_Off := TRUE;
+		  #Aux_LifterToTranslator_RemoveProductAutho := FALSE;
+		  IF #IN_FromTranslator_UpEnable AND (#IN_FlapClamps_Bwd AND NOT #IN_FlapClamps_Fwd OR NOT #IN_Configuration.MachineConf.FlapClamps) AND #IN_Lifter_Position < #IN_Configuration.Lifter_HighPosition_mm THEN
+			 #Aux_Lifter_UpCmd := TRUE;
+			 IF #Aux_LayerCount = 0 AND NOT #IN_FromTranslator_FrameRemoved AND #IN_WorkingParameter.FramePresence AND #IN_Configuration.MachineConf.FrameClamps THEN
+			 #Aux_PosReached := FALSE;
+		  IF #IN_CansPresence THEN
+			 #Aux_Automatic_CASE_Lift := 34;
+		  END_IF;
+		  ELSE
+			  IF #IN_CansPresence AND #IN_Configuration.MachineConf.FlapSucker THEN
+			 #Aux_Automatic_CASE_Lift := 35;
+		 ELSIF #IN_CansPresence AND NOT #IN_Configuration.MachineConf.FlapSucker THEN
+				#Aux_Automatic_CASE_Lift := 39;
+		  END_IF;
+	   END_IF;
+	   ELSIF   #IN_Lifter_Position >= #IN_Configuration.Lifter_HighPosition_mm THEN
+			   #Aux_Lifter_UpCmd := FALSE;
+			   #Aux_Automatic_CASE_Lift := 50;
+	   END_IF;
+					
+		  "kLIFTER_34_QUOTE_FOR_FRAME": //STEP 34: Lifter - Quote for frame
+			  #Aux_PosReached := (#IN_Lifter_Position - #Aux_Lifter_PosBackup) >= UINT_TO_INT(#IN_Configuration.FrameOffset) + #IN_Configuration.CansLevelOffset;
+		   IF (*#IN_CansPresence AND*) #Aux_PosReached  AND  #IN_Lifter_Position < #IN_Configuration.Lifter_HighPosition_mm   THEN
+				#Aux_Lifter_UpCmd := FALSE;
+		   IF NOT #Aux_Lifter_UpCmd AND NOT #Aux_LifterToTranslator_RemoveProductAutho THEN
+				  #Aux_LifterToTranslator_RemoveProductAutho := TRUE;
+		   ELSIF NOT #Aux_Lifter_UpCmd AND #Aux_LifterToTranslator_RemoveProductAutho AND #IN_FromTranslator_FrameRemoved THEN
+					 #Aux_Automatic_CASE_Lift := 36;
+		   END_IF;
+		   ELSIF #IN_Lifter_Position >= #IN_Configuration.Lifter_HighPosition_mm THEN
+				 #Aux_Lifter_UpCmd := FALSE;
+				 #Aux_Automatic_CASE_Lift := 50;
+		   END_IF;
+					
+		  "kLIFTER_35_WAITING_FOR_FLAP_REMOVAL": //STEP 35: Lifter - Waiting for flap removal
+		// #Aux_PosReached := (#IN_LifterPosition - #Aux_Lifter_PositionBackup) >=  "Configuration".Depal.CansLevelOffset + #IN_WorkingParameter.FlapOffset;
+		   //IF #IN_CansPresence (*AND #Aux_PosReached*) THEN
+			  #Aux_Lifter_UpCmd := FALSE;
+			  #Aux_LifterToTranslator_RemoveProductAutho := TRUE;
+			  #Aux_Automatic_CASE_Lift := 36;
+		   //END_IF;
+					
+		  "kLIFTER_36_WAITING_FOR_LEVEL_PHOTOCELL_RELEASE": //STEP 36: Lifter - Waiting for level photocell release 
+		   IF #IN_FromTranslator_FlapRemoved AND NOT #IN_CansPresence THEN
+			  #Aux_Lifter_DownCmd := FALSE;
+			  #Aux_LifterToTranslator_RemoveProductAutho := FALSE;
+			  #Aux_PosReached := FALSE;
+			  #Aux_LayerRemoved := FALSE;
+			  #Aux_Automatic_CASE_Lift := 39;
+			ELSIF #IN_FromTranslator_FlapRemoved AND #IN_CansPresence THEN
+				  #Aux_Lifter_DownCmd := TRUE;
+			END_IF;
+					
+		   "kLIFTER_39_WAIT_LEVEL_SENSOR": //STEP 39: Lifter - Wait level sensor
+			#Aux_Lifter_UpCmd := TRUE;
+			#Aux_Lifter_DownCmd := FALSE;
+			#Aux_LifterToTranslator_RemoveProductAutho := FALSE;
+			IF #IN_CansPresence THEN
+			   #Aux_Automatic_CASE_Lift := 40;
+			END_IF;
+			   
+		   "kLIFTER_40_STOP_REACHING_QUOTE": //STEP 40: Lifter - Stop reaching quote
+			#Aux_Lifter_UpCmd := TRUE;
+			#Aux_PosReached := (#IN_Lifter_Position - #Aux_Lifter_PosBackup) >= (UINT_TO_INT(#IN_WorkingParameter.ProductHeight_mm) + #IN_Configuration.CansLevelOffset);
+			IF #Aux_PosReached AND #IN_Lifter_Position < #IN_Configuration.Lifter_HighPosition_mm THEN
+			   #Aux_FlapClamps_On := NOT #Aux_LiftCycle_End (*AND NOT #Aux_LastLayer*);
+			   #Aux_FlapClamps_Off := FALSE;
+			   #Aux_Lifter_UpCmd := FALSE;
+						
+			 IF (NOT #IN_FlapClamps_Bwd AND #IN_FlapClamps_Fwd OR NOT #IN_Configuration.MachineConf.FlapClamps OR #Aux_LiftCycle_End (*OR #Aux_LastLayer*)) THEN
+					 #Aux_LifterToTranslator_RemoveProductAutho := TRUE;
+					 #Aux_Automatic_CASE_Lift := 41;
+			  END_IF;
+			  ELSIF
+					 #IN_Lifter_Position >= #IN_Configuration.Lifter_HighPosition_mm THEN
+					 #Aux_Lifter_UpCmd := FALSE;
+					 #Aux_Automatic_CASE_Lift := 50;
+			  END_IF;
+						
+			 "kLIFTER_41_CHECK_STATE": //STEP 41: Check state
+			  #Aux_Lifter_UpCmd := FALSE;
+			  IF #IN_FromTranslator_LayerRemoved THEN
+			  #Aux_LifterToTranslator_RemoveProductAutho := FALSE;
+			  #Aux_LayerRemoved := TRUE;
+			  END_IF;
+						
+			  IF (#Aux_LiftCycle_End OR #Aux_LastLayer ) (*AND NOT #IN_CansPresence*) AND #Aux_LayerRemoved THEN
+				  #Aux_LayerRemoved := FALSE;
+				  #Aux_Automatic_CASE_Lift := 50;
+				  #Aux_LayerCount += 1;
+			  ELSIF (NOT #Aux_LiftCycle_End AND NOT #Aux_LastLayer) (*AND NOT #IN_CansPresence*) AND #Aux_LayerRemoved THEN
+						 #Aux_LayerRemoved := FALSE;
+						 #Aux_Lifter_UpCmd := FALSE;
+						 #Aux_Lifter_DownCmd := FALSE;
+						 IF #IN_Configuration.MachineConf.FlapSucker OR #IN_Configuration.MachineConf.FrameClamps THEN
+				  #Aux_Automatic_CASE_Lift := 30;
+			   ELSE
+				  #Aux_Automatic_CASE_Lift := 42;
+			   END_IF;
+				  #Aux_LayerCount += 1;
+			   END_IF;
+						
+				#Aux_PalletEmpty := FALSE;
+						
+			  "kLIFTER_42_FREEING_CANS_AREA": //STEP 42: Lifter - Freeing cans area
+			   #Aux_FlapClamps_On := FALSE;
+			   #Aux_FlapClamps_Off := NOT #IN_FlapClamps_Bwd;
+			   #Aux_Lifter_DownCmd := #IN_CansPresence AND #IN_FlapClamps_Bwd AND NOT #IN_FlapClamps_Fwd;
+			   IF NOT #Aux_Lifter_DownCmd AND NOT #IN_CansPresence AND #IN_FlapClamps_Bwd AND NOT #IN_FlapClamps_Fwd AND NOT #Aux_FlapClamps_On AND NOT #Aux_FlapClamps_Off THEN
+					  #Aux_Automatic_CASE_Lift := 30;
+			   END_IF;
+						
+			  "kLIFTER_50_END_CYCLE_START_DESCENT_TO_POSITION": //STEP 50: Lifter - End cycle start descent to position 
+			   #Aux_LifterToTranslator_RemoveProductAutho := FALSE;
+			   #Aux_Lifter_PosBackup := 0;
+			   #Aux_FlapClamps_On := FALSE;
+			   #Aux_FlapClamps_Off := TRUE;
+			   #Aux_PalletEmpty := #Aux_LiftCycle_End;
+			   #Aux_Walls_Open := TRUE;
+			   #Aux_Walls_CloseLarge := FALSE;
+			   #Aux_Walls_CloseSmall := FALSE;
+			   IF #IN_FromTranslator_DownEnable AND (#IN_FlapClamps_Bwd AND NOT #IN_FlapClamps_Fwd OR NOT #IN_Configuration.MachineConf.FlapClamps) AND NOT #IN_FromTranslator_FrameRemoved AND (#IN_Walls_Open  OR NOT #IN_Configuration.MachineConf.PalletWall) THEN
+				  #Aux_LayerCount := 0;
+				  #Aux_Lifter_DownCmd := TRUE;
+				  #Aux_DischargePalletRequest := FALSE;
+				  #Aux_Automatic_CASE_Lift := 60;
+			   END_IF;
+					
+			  "kLIFTER_60_DESCENT_FINISHED": //STEP 60: Lifter - Descent finished
+			   IF #IN_Lifter_Low THEN
+				  #Aux_Lifter_DownCmd := FALSE;
+				  #Aux_PalletBlock_UpCmd := FALSE;
+				  #Aux_PalletBlock_DownCmd := NOT #IN_PalletBlocks_Low;
+				  #Aux_Walls_Open := TRUE;
+				  #Aux_Walls_CloseLarge := FALSE;
+				  #Aux_Walls_CloseSmall := FALSE;
+				  IF (#IN_PalletBlocks_Low OR NOT #IN_Configuration.MachineConf.PalletBlock) AND (#IN_Walls_Open OR NOT #IN_Configuration.MachineConf.PalletWall) THEN
+			   IF #Aux_PalletEmpty THEN
+				  #Aux_Automatic_CASE_Lift := 80;
+			   ELSE
+				  #Aux_Automatic_CASE_Lift := 70;
+			   END_IF;
+			END_IF;
+		 END_IF;
+						
+			   "kLIFTER_70_DISCHARGE_BACK_REQUEST_PALLET_NOT_EMPTY": //STEP 70: Lifter - Discharge back request because pallet not empty
+				#Aux_LifterChain_RunBwd := TRUE;
+				#Aux_LifterChain_FwdCmd := FALSE;
+						
+				IF #IN_PalletTransfer_Bwd THEN
+				   #Aux_Automatic_CASE_Lift := 90;
+				END_IF;
+						
+			   "kLIFTER_80_DISCHARGE_EMPTY_PALLET": //STEP 80 Lifter- Discharge empty pallet
+				#Aux_LifterChain_RunBwd := FALSE;
+				#Aux_LifterChain_FwdCmd := TRUE;
+						
+				IF #IN_PalletTransfer_Fwd THEN
+				   #Aux_Automatic_CASE_Lift := 90;
+				END_IF;
+						
+			   "kLIFTER_90_COMMANDS_RESET": //COMMANDS RESET 
+			   #Aux_Lifter_DownCmd := FALSE;
+			   #Aux_PalletBlock_UpCmd := FALSE;
+			   #Aux_Walls_Open := FALSE;
+			   #Aux_Walls_CloseLarge := FALSE;
+			   #Aux_LifterChain_RunBwd := NOT #IN_PalletTransfer_Bwd;
+			   #Aux_LifterChain_FwdCmd := NOT #IN_PalletTransfer_Fwd;
+			   #Aux_Automatic_CASE_Lift := 0;
+			END_CASE;
+		END_REGION
+	
+	//STOP WAITING BEFORE ROTATION CHANGE
+	 #Aux_LifterStop(IN := NOT #IN_MotorRunning AND NOT #IN_FistCycle,
+					 PT := UINT_TO_TIME(300));
+	
+	// OUTPUT TRANSFER
+	#OUT_LiftCycle_End := #Aux_LiftCycle_End;
+	#OUT_PosReached := #Aux_PosReached;
+	#OUT_Walls_Open := #Aux_Walls_Open;
+	#OUT_Walls_CloseSmall := #Aux_Walls_CloseSmall;
+	#OUT_Walls_CloseLarge := #Aux_Walls_CloseLarge;
+	#OUT_LifterChain_Run := #Aux_LifterChain_FwdCmd;
+	#OUT_Lifter_AUT_RunUp := #Aux_Lifter_UpCmd AND #IN_FromTranslator_UpEnable AND (#Aux_LifterStop.Q OR #OUT_Lifter_AUT_RunUp);
+	#OUT_Lifter_AUT_RunDown := #Aux_Lifter_DownCmd AND #IN_FromTranslator_DownEnable AND (#Aux_LifterStop.Q OR #OUT_Lifter_AUT_RunDown);
+	#OUT_Lifter_MAN_RunUp := #Aux_Manual_UpCmd AND (#Aux_LifterStop.Q OR #OUT_Lifter_MAN_RunUp);
+	#OUT_Lifter_MAN_RunDown := #Aux_Manual_DownCmd AND (#Aux_LifterStop.Q OR #OUT_Lifter_MAN_RunDown);
+	#OUT_HomingAlarm := #Aux_Homing_Alarm;
+	#OUT_HomingCycleActive := #Aux_Homing_Active;
+	#OUT_PalletBlock_UpCmd := #Aux_PalletBlock_UpCmd;
+	#OUT_PalletBlock_DownCmd := #Aux_PalletBlock_DownCmd;
+	#OUT_Flap_Clamps_ON := #Aux_FlapClamps_On;
+	#OUT_Flap_Clamps_OFF := #Aux_FlapClamps_Off;
+	#OUT_CASE_Lift := #Aux_Automatic_CASE_Lift;
+	#OUT_CASE_Stop := #Aux_CASE_Stop;
+END_FUNCTION_BLOCK
+
